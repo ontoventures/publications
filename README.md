@@ -1,6 +1,6 @@
-# Anthrogen flipbook (temporary)
+# publication flipbooks
 
-A page-turning version of the Anthrogen zine, built with
+A page-turning version of the zines, built with
 [flipbook-viewer](https://github.com/theproductiveprogrammer/flipbook-viewer) 1.6.1 (MIT).
 
 - **Desktop / tablet / phone in landscape:** two-page spreads. Turn with the arrows,
