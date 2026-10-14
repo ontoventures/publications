@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Anthrogen: Biological Abundance</title>
 <meta name="description" content="Anthrogen, a zine published by Onto.">
-<link rel="preload" as="image" href="pages/01.webp">
 <style>
   :root {
     --stage: #110e0c;   /* the zine's warm black */
     --paper: #f4f3ec;
     --lime: #b8d13f;
     --controls: 64px;
+    --turn: 1111ms;     /* matches the viewer's page turn */
     color-scheme: dark;
   }
   * { box-sizing: border-box; }
@@ -35,13 +35,27 @@
   #book canvas {
     display: block; width: 100% !important; height: 100% !important;
     object-fit: contain; touch-action: pan-y;
+    transition: transform var(--turn) cubic-bezier(.45, 0, .55, 1);
   }
+  #book canvas.still { transition: none; }
+  #book-canvas { transition: opacity .2s ease; }
+  #book.jumping #book-canvas { opacity: 0; }
   #book canvas.go-back { cursor: w-resize; }
   #book canvas.go-on { cursor: e-resize; }
 
+  /* Paper grain over the pages (it multiplies away to nothing on the dark stage) */
+  #grain {
+    position: absolute; inset: 0; pointer-events: none;
+    mix-blend-mode: multiply; opacity: .75;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='g' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='.42' intercept='.73'/%3E%3CfeFuncG type='linear' slope='.42' intercept='.73'/%3E%3CfeFuncB type='linear' slope='.42' intercept='.71'/%3E%3CfeFuncA type='linear' slope='0' intercept='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='f' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .035' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='.16' intercept='.9'/%3E%3CfeFuncG type='linear' slope='.16' intercept='.9'/%3E%3CfeFuncB type='linear' slope='.16' intercept='.88'/%3E%3CfeFuncA type='linear' slope='0' intercept='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+    background-size: 260px 260px, 700px 700px;
+  }
+
   .controls {
-    display: flex; align-items: center; justify-content: center; gap: 20px;
-    padding-bottom: 8px;
+    display: grid; grid-template-columns: 44px minmax(0, 34em) 44px;
+    align-items: center; justify-content: center; gap: 14px;
+    padding: 0 12px 8px;
   }
   .controls button {
     appearance: none; background: none; border: 0; color: inherit;
@@ -53,10 +67,15 @@
   .controls button:disabled { opacity: .18; cursor: default; }
   .controls button:focus-visible { outline: 1px solid var(--lime); outline-offset: 2px; }
   .controls svg { width: 22px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1; }
-  #where {
-    min-width: 7.5em; text-align: center; opacity: .6;
-    font-variant-numeric: lining-nums tabular-nums;
+
+  #caption {
+    text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: opacity .5s ease;
   }
+  #caption.hidden { opacity: 0; }
+  #caption .title { opacity: .78; }
+  #caption .chapter { opacity: .45; margin-left: 2.2em; transition: opacity .5s ease; }
+  #caption .chapter.out { opacity: 0; }
 
   /* Phone mode: the pages in reading order, one under the next */
   .column-mode #book, .column-mode .controls { display: none; }
@@ -65,26 +84,29 @@
     display: flex; flex-direction: column; align-items: center; gap: 14px;
     padding: 14px 14px 40px;
   }
-  #column img {
-    display: block; width: 100%; max-width: 560px; height: auto;
-    background: #fff; aspect-ratio: var(--ratio);
+  .page-wrap { position: relative; width: 100%; max-width: 560px; }
+  .page-wrap img { display: block; width: 100%; height: auto; aspect-ratio: var(--ratio); background: var(--paper); }
+  .page-wrap::after { content: ""; position: absolute; inset: 0; background: inherit; }
+  .column-mode .page-wrap::after {
+    background-image: var(--grain-image); background-size: 260px 260px, 700px 700px;
+    mix-blend-mode: multiply; opacity: .75; pointer-events: none;
   }
 
-  .sr-only {
-    position: absolute; width: 1px; height: 1px; overflow: hidden;
-    clip: rect(0 0 0 0); white-space: nowrap;
-  }
   #error { display: none; position: fixed; inset: auto 0 80px; text-align: center; opacity: .8; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #book canvas, #caption, #caption .chapter, #book { transition: none; }
+  }
 </style>
 </head>
 <body>
   <main id="app" class="book-mode">
-    <div id="book" role="img" aria-label="Anthrogen zine, cover"></div>
+    <div id="book" role="img" aria-label="Anthrogen zine, front cover"><div id="grain"></div></div>
     <nav class="controls" aria-label="Pages">
       <button id="prev" type="button" aria-label="Previous spread" disabled>
         <svg viewBox="0 0 22 12" aria-hidden="true"><path d="M21 6H1M6 1 1 6l5 5"/></svg>
       </button>
-      <span id="where" aria-live="polite">Cover</span>
+      <div id="caption" class="hidden" aria-live="polite"><span class="title">Biological Abundance</span><span class="chapter"></span></div>
       <button id="next" type="button" aria-label="Next spread">
         <svg viewBox="0 0 22 12" aria-hidden="true"><path d="M1 6h20M16 1l5 5-5 5"/></svg>
       </button>
@@ -98,23 +120,55 @@
   <script>
   (() => {
     'use strict';
-    const PAGES = window.ZINE_PAGES;            // book order, from tools/render_pages.py
+    const { sizes: SIZES, pages: PAGES } = window.ZINE;   // book order, from tools/render_pages.py
     const LAST_SPREAD = Math.floor(PAGES.length / 2);
+    const MARGIN = 3;                                     // % around the book, as passed to the viewer
+    const CHAPTERS = [
+      [3, 18, 'I. Instruments of Abundance'],
+      [19, 38, 'II. The Fringes of Reason'],
+      [39, 47, 'III. History of the Future'],
+    ];
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     const phone = matchMedia('(max-width: 700px) and (orientation: portrait)');
 
     const app = document.getElementById('app');
     const bookEl = document.getElementById('book');
-    const where = document.getElementById('where');
+    const caption = document.getElementById('caption');
+    const chapterEl = caption.querySelector('.chapter');
     const prevBtn = document.getElementById('prev');
     const nextBtn = document.getElementById('next');
+    const pad = n => String(n).padStart(2, '0');
 
-    /* ---------- images: load once, in reading order, shared by both modes ---------- */
-    const store = PAGES.map(() => ({ state: 'idle', img: null, waiting: [] }));
+    // The grain is defined once in CSS; the phone column reuses it.
+    document.documentElement.style.setProperty('--grain-image',
+      getComputedStyle(document.getElementById('grain')).backgroundImage);
+
+    /* ---------- which image size to use ---------- */
+    // Use the 300 dpi set unless the screen needs more pixels than it has.
+    function pickSet(neededHeightPx) {
+      return neededHeightPx > SIZES.md[1] * 0.92 ? 'lg' : 'md';
+    }
+    function bookPageHeight(boxW, boxH) {     // CSS px, mirroring the viewer's own layout
+      const [pw, ph] = SIZES.md;
+      let h = boxH * (1 - MARGIN / 100);
+      const w = 2 * pw * (h / ph), maxW = boxW * (1 - MARGIN / 100);
+      return { h: w > maxW ? ph * (maxW / (2 * pw)) : h,
+               w: w > maxW ? maxW : w };
+    }
+
+    /* ---------- images: load once per size, front to back ---------- */
+    let set = 'md';
+    let store = [];
+    function resetStore(newSet) {
+      set = newSet;
+      store = PAGES.map(() => ({ state: 'idle', img: null, waiting: [] }));
+      cursor = 0;
+    }
+    const src = i => `pages/${set}/${pad(i + 1)}.webp`;
 
     function load(i) {                         // i is 0-based
       const s = store[i];
-      if (s.state !== 'idle') return;
+      if (!s || s.state !== 'idle') return;
       s.state = 'loading';
       const img = new Image();
       img.decoding = 'async';
@@ -127,15 +181,14 @@
       img.onerror = () => {
         s.state = 'failed';
         document.getElementById('error').style.display = 'block';
-        s.waiting.splice(0).forEach(cb => cb('Failed to load ' + PAGES[i].src));
+        s.waiting.splice(0).forEach(cb => cb('Failed to load ' + src(i)));
         pump();
       };
-      img.src = PAGES[i].src;
+      img.src = src(i);
     }
 
-    // Background preloading, a few at a time, front to back.
     let cursor = 0;
-    function pump() {
+    function pump() {                          // background preloading, a few at a time
       const busy = store.filter(s => s.state === 'loading').length;
       for (let n = busy; n < 3 && cursor < store.length; cursor++) {
         if (store[cursor].state === 'idle') { load(cursor); n++; }
@@ -143,46 +196,71 @@
     }
 
     // The "book provider" flipbook-viewer expects. Page numbers are 1-based;
-    // 0 or past the end means "no page" (empty side of the first/last spread).
+    // 0 or past the end means "no page" (the empty side of the first/last spread).
     const book = {
       numPages: () => PAGES.length,
       getPage(n, cb) {
         if (!n || n > PAGES.length) return cb();
         const s = store[n - 1];
         if (s.state === 'ready') return cb(null, s.img);
-        if (s.state === 'failed') return cb('Failed to load ' + PAGES[n - 1].src);
+        if (s.state === 'failed') return cb('Failed to load ' + src(n - 1));
         if (s.waiting.length < 50) s.waiting.push(cb);
         load(n - 1);
       },
     };
 
-    /* ---------- labels ---------- */
-    function label(spread) {
-      if (spread === 0) return 'Cover';
-      if (spread === LAST_SPREAD) return 'Back cover';
-      const nums = [PAGES[spread * 2 - 1], PAGES[spread * 2]]
-        .filter(p => p && typeof p.page === 'number').map(p => p.page);
-      return nums.length === 2 ? `pp. ${nums[0]}–${nums[1]}` : `p. ${nums[0]}`;
+    /* ---------- caption ---------- */
+    function chapterOf(spread) {
+      const pageNums = [PAGES[spread * 2], PAGES[spread * 2 - 1]].filter(p => typeof p === 'number');
+      const p = pageNums[0];                   // the right-hand page decides, else the left
+      const hit = p && CHAPTERS.find(([a, b]) => p >= a && p <= b);
+      return hit ? hit[2] : '';
+    }
+    let shownChapter = null, chapterTimer;
+    function updateCaption(spread) {
+      const onCover = spread === 0 || spread === LAST_SPREAD;
+      caption.classList.toggle('hidden', onCover);
+      const ch = onCover ? shownChapter : chapterOf(spread);
+      if (ch === shownChapter) return;
+      shownChapter = ch;
+      clearTimeout(chapterTimer);
+      if (reduced.matches || !chapterEl.textContent) { chapterEl.textContent = ch; chapterEl.classList.remove('out'); return; }
+      chapterEl.classList.add('out');
+      chapterTimer = setTimeout(() => { chapterEl.textContent = ch; chapterEl.classList.remove('out'); }, 450);
     }
 
     /* ---------- book mode ---------- */
-    let viewer = null, spread = 0, building = false;
+    let viewer = null, spread = 0, building = false, jumping = false, turning = false, turnTimer;
+    let canvas = null, coverShift = 0;
+
+    // Covers sit alone in the middle: slide the book a quarter-spread while a cover is up.
+    function shiftFor(s) { return s === 0 ? -coverShift : s === LAST_SPREAD ? coverShift : 0; }
+    function placeBook(s, animate) {
+      if (!canvas) return;
+      canvas.classList.toggle('still', !animate || reduced.matches);
+      canvas.style.transform = `translateX(${shiftFor(s)}px)`;
+    }
 
     function setSpread(s) {
       spread = s;
-      const text = label(s);
-      where.textContent = text;
-      bookEl.setAttribute('aria-label', 'Anthrogen zine, ' + text);
+      turning = false;
+      clearTimeout(turnTimer);
+      if (!jumping) updateCaption(s);
+      const name = s === 0 ? 'front cover' : s === LAST_SPREAD ? 'back cover'
+        : 'spread ' + s + ' of ' + (LAST_SPREAD - 1);
+      bookEl.setAttribute('aria-label', 'Anthrogen zine, ' + name);
       prevBtn.disabled = s === 0;
       nextBtn.disabled = s === LAST_SPREAD;
     }
 
     const frame = () => new Promise(r => requestAnimationFrame(r));
 
-    let jumping = false;
-    async function goTo(target) {                // jump without the page-turn animation
+    async function goTo(target) {               // jump without the page-turn animation
       if (jumping) return;
       jumping = true;
+      updateCaption(target);
+      const hide = bookEl.classList.contains('ready') && !reduced.matches;
+      if (hide) { bookEl.classList.add('jumping'); await new Promise(r => setTimeout(r, 200)); }
       window.FLIP_MS = 1;
       for (let guard = 0; spread !== target && guard < 400; guard++) {
         const before = spread;
@@ -190,26 +268,55 @@
         for (let w = 0; spread === before && w < 300; w++) await frame();
       }
       window.FLIP_MS = reduced.matches ? 1 : null;
+      placeBook(spread, false);
+      await frame();
+      bookEl.classList.remove('jumping');
       jumping = false;
+    }
+
+    function turn(dir) {
+      if (!viewer || building || jumping || turning) return;
+      const target = spread + dir;
+      if (target < 0 || target > LAST_SPREAD) return;
+      turning = true;
+      turnTimer = setTimeout(() => { turning = false; }, 3000);   // safety net
+      placeBook(target, true);
+      updateCaption(target);
+      dir > 0 ? viewer.flip_forward() : viewer.flip_back();
     }
 
     function buildBook(startAt) {
       building = true;
       bookEl.classList.remove('ready');
-      bookEl.innerHTML = '';
+      bookEl.querySelector('canvas')?.remove();
       const r = bookEl.getBoundingClientRect();
+      const boxW = Math.max(320, Math.floor(r.width)), boxH = Math.max(240, Math.floor(r.height));
+      const page = bookPageHeight(boxW, boxH);
+      coverShift = page.w / 4;
+      const want = pickSet(page.h * (window.devicePixelRatio || 1));
+      if (want !== set || !store.length) resetStore(want);
+      load(0); load(1); load(2);
+
       window.FLIP_MS = reduced.matches ? 1 : null;
-      flipbook.init(book, 'book', {
-        width: Math.max(320, Math.floor(r.width)),
-        height: Math.max(240, Math.floor(r.height)),
+      const holder = document.createElement('div');   // the viewer replaces its container's contents
+      holder.id = 'book-canvas';
+      holder.style.cssText = 'position:absolute;inset:0';
+      bookEl.querySelector('#book-canvas')?.remove();
+      bookEl.prepend(holder);
+      flipbook.init(book, 'book-canvas', {
+        width: boxW, height: boxH, margin: MARGIN,
         backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--stage').trim(),
-        margin: 3,
       }, async (err, v) => {
         if (err) { console.error(err); document.getElementById('error').style.display = 'block'; return; }
         viewer = v;
+        canvas = holder.querySelector('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';          // sharp type when pages are scaled down
         spread = 0;
         viewer.on('seen', n => setSpread(Math.floor(Number(n) / 2)));
         setSpread(0);
+        placeBook(0, false);
         if (startAt) await goTo(startAt);
         bookEl.classList.add('ready');
         building = false;
@@ -219,11 +326,12 @@
     }
 
     function wireCanvas() {
-      const canvas = bookEl.querySelector('canvas');
-      if (!canvas) return;
       const side = e => {
-        const r = canvas.getBoundingClientRect();
-        return e.clientX < r.left + r.width / 2 ? -1 : 1;
+        const r = bookEl.getBoundingClientRect();           // the stage, not the shifted canvas
+        const mid = r.left + r.width / 2 + shiftFor(spread);
+        if (spread === 0) return e.clientX < mid - coverShift * 2 ? -1 : 1;
+        if (spread === LAST_SPREAD) return e.clientX > mid + coverShift * 2 ? 1 : -1;
+        return e.clientX < mid ? -1 : 1;
       };
       canvas.addEventListener('mousemove', e => {
         const s = side(e);
@@ -241,19 +349,14 @@
       });
     }
 
-    function turn(dir) {
-      if (!viewer || building || jumping) return;
-      dir > 0 ? viewer.flip_forward() : viewer.flip_back();
-    }
-
     prevBtn.addEventListener('click', () => turn(-1));
     nextBtn.addEventListener('click', () => turn(1));
     document.addEventListener('keydown', e => {
       if (app.classList.contains('column-mode') || e.metaKey || e.ctrlKey || e.altKey) return;
       if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); turn(1); }
       else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); turn(-1); }
-      else if (e.key === 'Home' && viewer && !building && !jumping) { e.preventDefault(); goTo(0); }
-      else if (e.key === 'End' && viewer && !building && !jumping) { e.preventDefault(); goTo(LAST_SPREAD); }
+      else if (e.key === 'Home' && viewer && !building && !turning) { e.preventDefault(); goTo(0); }
+      else if (e.key === 'End' && viewer && !building && !turning) { e.preventDefault(); goTo(LAST_SPREAD); }
     });
 
     /* ---------- phone mode ---------- */
@@ -262,25 +365,28 @@
       if (columnBuilt) return;
       columnBuilt = true;
       const col = document.getElementById('column');
+      const w = Math.min(innerWidth - 28, 560);
+      const colSet = pickSet(w * (window.devicePixelRatio || 1) * SIZES.md[1] / SIZES.md[0]);
       PAGES.forEach((p, i) => {
-        if (p.page === 'blank') return;       // the blank inside covers
+        if (p === 'blank') return;              // the blank inside covers
+        const wrap = document.createElement('div');
+        wrap.className = 'page-wrap';
         const img = document.createElement('img');
         img.loading = i < 3 ? 'eager' : 'lazy';
         img.decoding = 'async';
-        img.src = p.src;
-        img.alt = p.page === 'front' ? 'Front cover: Biological Abundance'
-                : p.page === 'back' ? 'Back cover' : `Page ${p.page}`;
-        img.style.setProperty('--ratio', '1477 / 2080');
-        img.dataset.spread = Math.floor((i + 1) / 2);
-        img.onload = () => img.style.setProperty('--ratio', `${img.naturalWidth} / ${img.naturalHeight}`);
-        col.appendChild(img);
+        img.src = `pages/${colSet}/${pad(i + 1)}.webp`;
+        img.alt = p === 'front' ? 'Front cover: Biological Abundance' : p === 'back' ? 'Back cover' : `Page ${p}`;
+        img.style.setProperty('--ratio', `${SIZES.md[0]} / ${SIZES.md[1]}`);
+        wrap.dataset.spread = Math.floor((i + 1) / 2);
+        wrap.appendChild(img);
+        col.appendChild(wrap);
       });
     }
 
-    function columnSpread() {                 // which spread is on screen in phone mode
-      const imgs = [...document.querySelectorAll('#column img')];
+    function columnSpread() {                  // which spread is on screen in phone mode
       const mid = innerHeight / 2;
-      const hit = imgs.find(im => { const r = im.getBoundingClientRect(); return r.top <= mid && r.bottom >= mid; });
+      const hit = [...document.querySelectorAll('#column .page-wrap')]
+        .find(el => { const r = el.getBoundingClientRect(); return r.top <= mid && r.bottom >= mid; });
       return hit ? Number(hit.dataset.spread) : spread;
     }
 
@@ -294,7 +400,7 @@
       app.className = want + '-mode';
       if (want === 'column') {
         buildColumn();
-        const target = document.querySelector(`#column img[data-spread="${keep}"]`);
+        const target = document.querySelector(`#column .page-wrap[data-spread="${keep}"]`);
         if (target && keep) target.scrollIntoView();
       } else {
         buildBook(keep);
@@ -304,8 +410,6 @@
     let t;
     addEventListener('resize', () => { clearTimeout(t); t = setTimeout(layout, 250); });
     reduced.addEventListener?.('change', () => { window.FLIP_MS = reduced.matches ? 1 : null; });
-
-    load(0); load(1); load(2);
     layout();
   })();
   </script>
