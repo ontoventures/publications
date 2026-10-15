@@ -137,6 +137,25 @@
   #sheet button[aria-current="true"] { opacity: 1; }
   #sheet .num + .name { margin-left: .4em; }
 
+  .logo {
+    position: fixed; z-index: 5;
+    top: max(18px, env(safe-area-inset-top, 0px)); left: max(20px, env(safe-area-inset-left, 0px));
+    display: grid; align-items: center; height: 24px; color: var(--paper); text-decoration: none;
+  }
+  .logo > * { grid-area: 1 / 1; transition: opacity .25s ease; }
+  .logo svg { width: 42px; height: auto; fill: currentColor; opacity: .85; }
+  .logo span { opacity: 0; white-space: nowrap; }
+  .logo:hover svg, .logo:focus-visible svg { opacity: 0; }
+  .logo:hover span, .logo:focus-visible span { opacity: .95; }
+  .logo:focus-visible { outline: 1px solid var(--lime); outline-offset: 4px; }
+  .book-mode.banded { padding-top: 56px; }
+  .column-mode .logo { position: absolute; }
+  .column-mode #column { padding-top: 60px; }
+  #sheet .home {
+    display: block; padding: 12px 18px 14px; margin-bottom: 6px; color: inherit; text-decoration: none;
+    opacity: .6; border-bottom: 1px solid rgba(244, 243, 236, .12);
+  }
+
   #error { display: none; position: fixed; inset: auto 0 80px; text-align: center; opacity: .8; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -145,6 +164,10 @@
 </style>
 </head>
 <body>
+  <a class="logo" href="../" aria-label="Archive">
+    <svg viewBox="0 0 184.85 80" aria-hidden="true"><path d="M0,80V0h184.85v80H0ZM37.95,45.81h108.95v-11.63H37.95v11.63Z"/></svg>
+    <span>Archive</span>
+  </a>
   <main id="app" class="book-mode">
     <div id="book" role="img" aria-label="Atomic to Cosmic, front cover"><div id="grain" class="grain"></div></div>
     <nav class="controls" aria-label="Pages">
@@ -160,7 +183,7 @@
       </button>
     </nav>
     <div id="column" aria-label="Atomic to Cosmic, all pages"></div>
-    <div id="sheet" aria-label="Chapters"></div>
+    <div id="sheet" aria-label="Chapters"><a class="home" href="../">Archive</a></div>
     <button id="colbar" type="button" aria-expanded="false" aria-controls="sheet">
       <span class="text hidden"><span class="title">Atomic to Cosmic</span><span class="chapter"></span></span>
       <svg viewBox="0 0 20 14" aria-hidden="true"><path d="M0 1h20M0 7h20M0 13h20"/></svg>
@@ -511,6 +534,10 @@
       const keep = mode === 'column' ? columnSpread() : spread;
       mode = want;
       app.className = want + '-mode';
+      if (want === 'book') {
+        const page = bookPage(innerWidth, innerHeight - 64);
+        app.classList.toggle('banded', (innerWidth - page.w) / 2 < 100);
+      }
       if (want === 'column') {
         buildColumn();
         if (keep) scrollToSpread(keep);
