@@ -30,9 +30,15 @@
   a:hover { opacity: 1; text-decoration: underline; text-decoration-color: var(--lime); text-underline-offset: .25em; text-decoration-thickness: 1px; }
   a:focus-visible { outline: 1px solid var(--lime); outline-offset: 3px; }
   .subject { opacity: .45; margin-left: 1.2em; }
+  a.logo, a.logo:hover { position: absolute; top: calc(max(12vh, env(safe-area-inset-top, 0px)) + 3px); right: 8vw;
+    opacity: .85; color: var(--paper); text-decoration: none; }
+  .logo svg { display: block; width: 42px; height: auto; fill: currentColor; }
 </style>
 </head>
 <body>
+  <a class="logo" href="https://www.onto.vc" aria-label="Onto">
+    <svg viewBox="0 0 184.85 80" aria-hidden="true"><path d="M0,80V0h184.85v80H0ZM37.95,45.81h108.95v-11.63H37.95v11.63Z"/></svg>
+  </a>
   <main>
     <h1>Onto Paper Archive</h1>
 
