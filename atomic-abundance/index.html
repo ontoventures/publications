@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Actinide: Atomic Abundance</title>
+<meta name="description" content="Atomic Abundance, a publication by Onto.">
+<style>
+  :root {
+    --stage: #110e0c;   /* warm black */
+    --paper: #f4f3ec;
+    --lime: #b8d13f;
+    --controls: 64px;
+    --turn: 1111ms;     /* matches the viewer's page turn */
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--stage);
+    color: var(--paper);
+    font: 15px/1.4 "FK Roman Standard", "Times New Roman", Times, serif;
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+             env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; }
+
+  /* ---------- book mode ---------- */
+  .book-mode { height: 100%; display: grid; grid-template-rows: 1fr var(--controls); }
+  #book { position: relative; min-height: 0; overflow: hidden; opacity: 0; transition: opacity .6s ease; }
+  #book.ready { opacity: 1; }
+  #book-canvas { position: absolute; inset: 0; transition: opacity .2s ease; }
+  #book.jumping #book-canvas { opacity: 0; }
+  #book canvas {
+    display: block; width: 100% !important; height: 100% !important;
+    object-fit: contain; touch-action: pan-y;
+    transition: transform var(--turn) cubic-bezier(.45, 0, .55, 1);
+  }
+  #book canvas.still { transition: none; }
+  #book canvas.go-back { cursor: w-resize; }
+  #book canvas.go-on { cursor: e-resize; }
+
+  /* Paper grain over the pages (it multiplies away to nothing on the dark stage) */
+  .grain {
+    mix-blend-mode: multiply; opacity: .75; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='g' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='.42' intercept='.73'/%3E%3CfeFuncG type='linear' slope='.42' intercept='.73'/%3E%3CfeFuncB type='linear' slope='.42' intercept='.71'/%3E%3CfeFuncA type='linear' slope='0' intercept='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='f' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012 .035' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='.16' intercept='.9'/%3E%3CfeFuncG type='linear' slope='.16' intercept='.9'/%3E%3CfeFuncB type='linear' slope='.16' intercept='.88'/%3E%3CfeFuncA type='linear' slope='0' intercept='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+    background-size: 260px 260px, 700px 700px;
+  }
+  #grain { position: absolute; inset: 0; }
+
+  .controls {
+    display: grid; grid-template-columns: 44px minmax(0, 62em) 44px;
+    align-items: center; justify-content: center; gap: 14px;
+    padding: 0 12px 8px;
+  }
+  .arrow {
+    appearance: none; background: none; border: 0;
+    width: 44px; height: 44px; padding: 0; border-radius: 50%;
+    display: grid; place-items: center; cursor: pointer; opacity: .7;
+    transition: opacity .2s;
+  }
+  .arrow:hover:not(:disabled) { opacity: 1; }
+  .arrow:disabled { opacity: .18; cursor: default; }
+  .arrow svg { width: 22px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1; }
+  button:focus-visible { outline: 1px solid var(--lime); outline-offset: 3px; }
+
+  /* The middle of the row: a caption at rest, the chapter links on hover */
+  .middle { position: relative; height: 44px; display: grid; align-items: center; }
+  .middle > * { grid-area: 1 / 1; transition: opacity .35s ease; }
+  #caption { text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; }
+  #caption.hidden { opacity: 0; }
+  .title { opacity: .78; }
+  .chapter { opacity: .45; margin-left: 2.2em; transition: opacity .45s ease; }
+  .chapter.out { opacity: 0; }
+
+  .nav { display: flex; justify-content: center; gap: 0 1.7em; white-space: nowrap; opacity: 0; pointer-events: none; }
+  .nav button {
+    appearance: none; background: none; border: 0; padding: 10px 0; cursor: pointer;
+    opacity: .5; transition: opacity .2s; position: relative;
+  }
+  .nav button:hover { opacity: 1; }
+  .nav button[aria-current="true"] { opacity: .95; }
+  .nav button[aria-current="true"]::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 6px; height: 1px; background: var(--lime);
+  }
+  .nav .num + .name { margin-left: .35em; }
+  .middle.compact .nav .name { display: none; }
+  .middle.open #caption { opacity: 0; pointer-events: none; }
+  .middle.open .nav { opacity: 1; pointer-events: auto; }
+
+  /* ---------- phone mode: pages in one column, a small bar at the bottom ---------- */
+  .column-mode #book, .column-mode .controls { display: none; }
+  #column, #colbar, #sheet { display: none; }
+  .column-mode #column {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    padding: 14px 14px 90px;
+  }
+  .page-wrap { position: relative; width: 100%; max-width: 560px; }
+  .page-wrap img { display: block; width: 100%; height: auto; aspect-ratio: var(--ratio); background: var(--paper); }
+  .page-wrap .grain { position: absolute; inset: 0; }
+
+  .column-mode #colbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 2;
+    padding: 0 6px 0 18px; padding-bottom: env(safe-area-inset-bottom, 0px);
+    height: calc(52px + env(safe-area-inset-bottom, 0px));
+    background: rgba(17, 14, 12, .88); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    border: 0; width: 100%; text-align: left; font-size: 14px; cursor: pointer;
+  }
+  #colbar .text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: opacity .3s; }
+  #colbar .text.hidden { opacity: 0; }
+  #colbar .chapter { margin-left: 1.4em; }
+  #colbar svg { flex: none; width: 44px; height: 44px; padding: 15px 12px; stroke: currentColor; fill: none; opacity: .7; }
+  .column-mode #sheet {
+    display: block; position: fixed; left: 0; right: 0; z-index: 1;
+    bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+    background: rgba(17, 14, 12, .96); padding: 8px 0;
+    transform: translateY(110%); transition: transform .3s ease; visibility: hidden;
+  }
+  .column-mode #sheet.open { transform: none; visibility: visible; }
+  #sheet button {
+    display: block; width: 100%; text-align: left; background: none; border: 0;
+    padding: 12px 18px; opacity: .6; cursor: pointer;
+  }
+  #sheet button[aria-current="true"] { opacity: 1; }
+  #sheet .num + .name { margin-left: .4em; }
+
+  #error { display: none; position: fixed; inset: auto 0 80px; text-align: center; opacity: .8; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #book, #book canvas, .middle > *, .chapter, #book-canvas, #sheet { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+  <main id="app" class="book-mode">
+    <div id="book" role="img" aria-label="Atomic Abundance, front cover"><div id="grain" class="grain"></div></div>
+    <nav class="controls" aria-label="Pages">
+      <button id="prev" class="arrow" type="button" aria-label="Previous spread" disabled>
+        <svg viewBox="0 0 22 12" aria-hidden="true"><path d="M21 6H1M6 1 1 6l5 5"/></svg>
+      </button>
+      <div class="middle" id="middle">
+        <div id="caption" class="hidden" aria-live="polite"><span class="title">Atomic Abundance</span><span class="chapter"></span></div>
+        <div class="nav" id="nav" aria-label="Chapters"></div>
+      </div>
+      <button id="next" class="arrow" type="button" aria-label="Next spread">
+        <svg viewBox="0 0 22 12" aria-hidden="true"><path d="M1 6h20M16 1l5 5-5 5"/></svg>
+      </button>
+    </nav>
+    <div id="column" aria-label="Atomic Abundance, all pages"></div>
+    <div id="sheet" aria-label="Chapters"></div>
+    <button id="colbar" type="button" aria-expanded="false" aria-controls="sheet">
+      <span class="text hidden"><span class="title">Atomic Abundance</span><span class="chapter"></span></span>
+      <svg viewBox="0 0 20 14" aria-hidden="true"><path d="M0 1h20M0 7h20M0 13h20"/></svg>
+    </button>
+  </main>
+  <p id="error" role="alert">The pages didn’t load. Reload the page to try again.</p>
+
+  <script src="pages/zine.js"></script>
+  <script src="vendor/flipbook-viewer.js"></script>
+  <script>
+  (() => {
+    'use strict';
+    const Z = window.ZINE;                       // written by build.py
+    const PAGES = Z.pages;                       // book order: "front", "blank", page numbers, "back"
+    const SIZES = Z.sizes;
+    const LAST_SPREAD = Math.floor(PAGES.length / 2);
+    const MARGIN = 3;                            // % around the book, as passed to the viewer
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+    const phone = matchMedia('(max-width: 700px) and (orientation: portrait)');
+    const canHover = matchMedia('(hover: hover)');
+
+    const $ = id => document.getElementById(id);
+    const app = $('app'), bookEl = $('book'), caption = $('caption'), middle = $('middle');
+    const prevBtn = $('prev'), nextBtn = $('next');
+    const pad = n => String(n).padStart(3, '0');
+
+    /* ---------- where things are ---------- */
+    const spreadOfPage = p => Math.floor((PAGES.indexOf(p) + 1) / 2);
+    const isFrontCover = s => s === 0;
+    const isBackCover = s => Z.hasBack && s === LAST_SPREAD;
+    const isCover = s => isFrontCover(s) || isBackCover(s);
+    const ENDNOTES_SPREAD = spreadOfPage(Z.endnotes);
+
+    function chapterOf(spread) {
+      const nums = [PAGES[spread * 2], PAGES[spread * 2 - 1]].filter(p => typeof p === 'number');
+      const p = nums[0];                         // the right-hand page decides, else the left
+      return (p && Z.chapters.find(c => p >= c.start && p <= c.end)) || null;
+    }
+
+    const DESTS = [
+      { key: 'cover', label: 'Cover', spread: 0 },
+      ...Z.chapters.map(c => ({ key: c.num, num: c.num, name: c.name, spread: spreadOfPage(c.start) })),
+      { key: 'endnotes', label: 'Endnotes', spread: ENDNOTES_SPREAD },
+    ];
+    function destOf(spread) {
+      if (isFrontCover(spread)) return 'cover';
+      if (spread >= ENDNOTES_SPREAD && !isBackCover(spread)) return 'endnotes';
+      const c = chapterOf(spread);
+      return c ? c.num : null;
+    }
+
+    /* ---------- image sizes ---------- */
+    const pickSet = neededHeightPx => (neededHeightPx > SIZES.md[1] * 0.92 ? 'lg' : 'md');
+    function bookPage(boxW, boxH) {              // CSS px, mirroring the viewer's own layout
+      const [pw, ph] = SIZES.md;
+      const h = boxH * (1 - MARGIN / 100), w = 2 * pw * (h / ph), maxW = boxW * (1 - MARGIN / 100);
+      return w > maxW ? { w: maxW, h: ph * (maxW / (2 * pw)) } : { w, h };
+    }
+
+    /* ---------- images: load once per size, front to back ---------- */
+    let set = 'md', store = [], cursor = 0;
+    function resetStore(s) {
+      set = s; cursor = 0;
+      store = PAGES.map(() => ({ state: 'idle', img: null, waiting: [] }));
+    }
+    const src = (i, s = set) => `pages/${s}/${pad(i + 1)}.webp`;
+    function load(i) {
+      const s = store[i];
+      if (!s || s.state !== 'idle') return;
+      s.state = 'loading';
+      const img = new Image();
+      img.decoding = 'async';
+      img.onload = () => {
+        s.state = 'ready';
+        s.img = { img, num: i + 1, width: img.naturalWidth, height: img.naturalHeight };
+        s.waiting.splice(0).forEach(cb => cb(null, s.img));
+        pump();
+      };
+      img.onerror = () => {
+        s.state = 'failed';
+        $('error').style.display = 'block';
+        s.waiting.splice(0).forEach(cb => cb('Failed to load ' + src(i)));
+        pump();
+      };
+      img.src = src(i);
+    }
+    function pump() {
+      const busy = store.filter(s => s.state === 'loading').length;
+      for (let n = busy; n < 3 && cursor < store.length; cursor++) {
+        if (store[cursor].state === 'idle') { load(cursor); n++; }
+      }
+    }
+    const book = {                               // the "book provider" flipbook-viewer expects
+      numPages: () => PAGES.length,
+      getPage(n, cb) {
+        if (!n || n > PAGES.length) return cb();
+        const s = store[n - 1];
+        if (s.state === 'ready') return cb(null, s.img);
+        if (s.state === 'failed') return cb('Failed to load ' + src(n - 1));
+        if (s.waiting.length < 50) s.waiting.push(cb);
+        load(n - 1);
+      },
+    };
+
+    /* ---------- caption and chapter links ---------- */
+    const chapterEls = [...document.querySelectorAll('.chapter')];
+    let shownChapter, chapterTimer;
+    function updateCaption(spread) {
+      const cover = isCover(spread);
+      caption.classList.toggle('hidden', cover);
+      document.querySelector('#colbar .text').classList.toggle('hidden', cover);
+      const c = cover ? null : chapterOf(spread);
+      const text = c ? `${c.num} ${c.name}` : '';
+      if (!cover && text !== shownChapter) {
+        const first = shownChapter === undefined;
+        shownChapter = text;
+        clearTimeout(chapterTimer);
+        const swap = () => chapterEls.forEach(el => { el.textContent = text; el.classList.remove('out'); });
+        if (first || reduced.matches) swap();
+        else { chapterEls.forEach(el => el.classList.add('out')); chapterTimer = setTimeout(swap, 400); }
+      }
+      const here = destOf(spread);
+      document.querySelectorAll('[data-dest]').forEach(b => b.setAttribute('aria-current', String(b.dataset.dest === here)));
+    }
+
+    function destButton(d) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.dest = d.key;
+      b.dataset.spread = d.spread;
+      if (d.label) b.textContent = d.label;
+      else {
+        const num = document.createElement('span'), name = document.createElement('span');
+        num.className = 'num'; num.textContent = d.num;
+        name.className = 'name'; name.textContent = d.name;
+        b.append(num, name);
+        b.title = `${d.num} ${d.name}`;
+      }
+      b.addEventListener('click', () => go(d.spread));
+      return b;
+    }
+    const navEl = $('nav'), sheet = $('sheet');
+    DESTS.forEach(d => { navEl.appendChild(destButton(d)); sheet.appendChild(destButton(d)); });
+
+    function fitNav() {                          // drop chapter names to numerals if the row is too narrow
+      middle.classList.remove('compact');
+      if (navEl.scrollWidth > middle.clientWidth + 1) middle.classList.add('compact');
+    }
+
+    // Open on hover (or keyboard focus); on touch screens a tap on the caption toggles it.
+    let closeTimer;
+    const openNav = () => { clearTimeout(closeTimer); middle.classList.add('open'); };
+    const closeNav = (delay = 250) => { clearTimeout(closeTimer); closeTimer = setTimeout(() => middle.classList.remove('open'), delay); };
+    middle.addEventListener('mouseenter', () => canHover.matches && openNav());
+    middle.addEventListener('mouseleave', () => canHover.matches && closeNav());
+    middle.addEventListener('focusin', openNav);
+    middle.addEventListener('focusout', e => { if (!middle.contains(e.relatedTarget)) closeNav(0); });
+    caption.addEventListener('click', () => { if (!canHover.matches) middle.classList.toggle('open'); });
+    document.addEventListener('pointerdown', e => { if (!canHover.matches && !middle.contains(e.target)) closeNav(0); });
+
+    /* ---------- book mode ---------- */
+    let viewer = null, spread = 0, building = false, jumping = false, turning = false, turnTimer;
+    let canvas = null, coverShift = 0;
+
+    // Covers sit alone in the middle: slide the book a quarter-spread while a cover is up.
+    const shiftFor = s => (isFrontCover(s) ? -coverShift : isBackCover(s) ? coverShift : 0);
+    function placeBook(s, animate) {
+      if (!canvas) return;
+      canvas.classList.toggle('still', !animate || reduced.matches);
+      canvas.style.transform = `translateX(${shiftFor(s)}px)`;
+    }
+
+    function setSpread(s) {
+      spread = s;
+      turning = false;
+      clearTimeout(turnTimer);
+      if (!jumping) updateCaption(s);
+      const name = isFrontCover(s) ? 'front cover' : isBackCover(s) ? 'back cover'
+        : `spread ${s} of ${LAST_SPREAD - (Z.hasBack ? 1 : 0)}`;
+      bookEl.setAttribute('aria-label', `${Z.title}, ${name}`);
+      prevBtn.disabled = s === 0;
+      nextBtn.disabled = s === LAST_SPREAD;
+    }
+
+    const frame = () => new Promise(r => requestAnimationFrame(r));
+    async function goTo(target) {                // jump without the page-turn animation
+      if (jumping || target === spread) return;
+      jumping = true;
+      updateCaption(target);
+      const hide = bookEl.classList.contains('ready') && !reduced.matches;
+      if (hide) { bookEl.classList.add('jumping'); await new Promise(r => setTimeout(r, 200)); }
+      viewer.go_to(target);                      // vendored addition: set the spread and redraw
+      for (let w = 0; spread !== target && w < 600; w++) await frame();   // waits for its images
+      placeBook(spread, false);
+      await frame();
+      bookEl.classList.remove('jumping');
+      jumping = false;
+    }
+
+    function turn(dir) {
+      if (!viewer || building || jumping || turning) return;
+      const target = spread + dir;
+      if (target < 0 || target > LAST_SPREAD) return;
+      turning = true;
+      turnTimer = setTimeout(() => { turning = false; }, 3000);   // safety net
+      placeBook(target, true);
+      updateCaption(target);
+      dir > 0 ? viewer.flip_forward() : viewer.flip_back();
+    }
+
+    function buildBook(startAt) {
+      building = true;
+      bookEl.classList.remove('ready');
+      const r = bookEl.getBoundingClientRect();
+      const boxW = Math.max(320, Math.floor(r.width)), boxH = Math.max(240, Math.floor(r.height));
+      const page = bookPage(boxW, boxH);
+      coverShift = page.w / 4;
+      const want = pickSet(page.h * (window.devicePixelRatio || 1));
+      if (want !== set || !store.length) resetStore(want);
+      load(0); load(1); load(2);
+
+      window.FLIP_MS = reduced.matches ? 1 : null;
+      $('book-canvas')?.remove();
+      const holder = document.createElement('div');   // the viewer replaces its container's contents
+      holder.id = 'book-canvas';
+      bookEl.prepend(holder);
+      flipbook.init(book, 'book-canvas', {
+        width: boxW, height: boxH, margin: MARGIN,
+        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--stage').trim(),
+      }, async (err, v) => {
+        if (err) { console.error(err); $('error').style.display = 'block'; return; }
+        viewer = v;
+        canvas = holder.querySelector('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';           // sharp type when pages are scaled down
+        spread = 0;
+        viewer.on('seen', n => setSpread(Math.floor(Number(n) / 2)));
+        setSpread(0);
+        updateCaption(0);
+        placeBook(0, false);
+        if (startAt) await goTo(startAt);
+        bookEl.classList.add('ready');
+        building = false;
+        wireCanvas();
+        fitNav();
+        pump();
+      });
+    }
+
+    function wireCanvas() {
+      const side = e => {
+        const r = bookEl.getBoundingClientRect();
+        const mid = r.left + r.width / 2 + shiftFor(spread);   // the spine, wherever the book sits
+        if (isFrontCover(spread)) return e.clientX < mid - coverShift * 2 ? -1 : 1;
+        if (isBackCover(spread)) return e.clientX > mid + coverShift * 2 ? 1 : -1;
+        return e.clientX < mid ? -1 : 1;
+      };
+      canvas.addEventListener('mousemove', e => {
+        const s = side(e);
+        canvas.classList.toggle('go-back', s < 0 && spread > 0);
+        canvas.classList.toggle('go-on', s > 0 && spread < LAST_SPREAD);
+      });
+      canvas.addEventListener('click', e => turn(side(e)));
+      let x0 = null, y0 = null;
+      canvas.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+      canvas.addEventListener('touchend', e => {
+        if (x0 == null) return;
+        const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+        x0 = null;
+        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) turn(dx < 0 ? 1 : -1);
+      });
+    }
+
+    prevBtn.addEventListener('click', () => turn(-1));
+    nextBtn.addEventListener('click', () => turn(1));
+    document.addEventListener('keydown', e => {
+      if (mode !== 'book' || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.target.closest && e.target.closest('.nav') && (e.key === ' ' || e.key === 'Enter')) return;
+      if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); turn(1); }
+      else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); turn(-1); }
+      else if (e.key === 'Home' && viewer && !building && !turning) { e.preventDefault(); goTo(0); }
+      else if (e.key === 'End' && viewer && !building && !turning) { e.preventDefault(); goTo(LAST_SPREAD); }
+    });
+
+    /* ---------- phone mode ---------- */
+    let columnBuilt = false;
+    const colbar = $('colbar');
+    function buildColumn() {
+      if (columnBuilt) return;
+      columnBuilt = true;
+      const col = $('column');
+      const w = Math.min(innerWidth - 28, 560);
+      const colSet = pickSet(w * (window.devicePixelRatio || 1) * SIZES.md[1] / SIZES.md[0]);
+      PAGES.forEach((p, i) => {
+        if (p === 'blank') return;               // the blank inside covers
+        const wrap = document.createElement('div');
+        wrap.className = 'page-wrap';
+        const img = document.createElement('img');
+        img.loading = i < 3 ? 'eager' : 'lazy';
+        img.decoding = 'async';
+        img.src = src(i, colSet);
+        img.alt = p === 'front' ? `Front cover: ${Z.title}` : p === 'back' ? 'Back cover' : `Page ${p}`;
+        img.style.setProperty('--ratio', `${SIZES.md[0]} / ${SIZES.md[1]}`);
+        const grain = document.createElement('div');
+        grain.className = 'grain';
+        wrap.dataset.spread = Math.floor((i + 1) / 2);
+        wrap.append(img, grain);
+        col.appendChild(wrap);
+      });
+      let ticking = false;
+      addEventListener('scroll', () => {
+        if (ticking || mode !== 'column') return;
+        ticking = true;
+        requestAnimationFrame(() => { ticking = false; spread = columnSpread(); updateCaption(spread); });
+      }, { passive: true });
+      updateCaption(0);
+    }
+    function columnSpread() {
+      const mid = innerHeight / 2;
+      const hit = [...document.querySelectorAll('#column .page-wrap')]
+        .find(el => { const r = el.getBoundingClientRect(); return r.top <= mid && r.bottom >= mid; });
+      return hit ? Number(hit.dataset.spread) : spread;
+    }
+    function scrollToSpread(s) {
+      const target = [...document.querySelectorAll('#column .page-wrap')].find(el => Number(el.dataset.spread) >= s);
+      if (!target || s === 0) scrollTo({ top: 0, behavior: reduced.matches ? 'auto' : 'smooth' });
+      else target.scrollIntoView({ behavior: reduced.matches ? 'auto' : 'smooth' });
+    }
+    function toggleSheet(open) {
+      sheet.classList.toggle('open', open);
+      colbar.setAttribute('aria-expanded', String(open));
+    }
+    colbar.addEventListener('click', () => toggleSheet(!sheet.classList.contains('open')));
+
+    // A chapter link: jump in the book, or scroll in the column.
+    function go(s) {
+      if (mode === 'column') { toggleSheet(false); scrollToSpread(s); return; }
+      if (viewer && !building && !turning) goTo(s);
+      if (!canHover.matches) closeNav(0);
+    }
+
+    /* ---------- choose a mode, and rebuild on resize ---------- */
+    let mode = null;
+    function layout() {
+      const want = phone.matches ? 'column' : 'book';
+      if (want === mode && want === 'column') return;
+      const keep = mode === 'column' ? columnSpread() : spread;
+      mode = want;
+      app.className = want + '-mode';
+      if (want === 'column') {
+        buildColumn();
+        if (keep) scrollToSpread(keep);
+      } else {
+        toggleSheet(false);
+        buildBook(keep);
+      }
+    }
+
+    let t;
+    addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { layout(); fitNav(); }, 250); });
+    reduced.addEventListener?.('change', () => { window.FLIP_MS = reduced.matches ? 1 : null; });
+    layout();
+  })();
+  </script>
+</body>
+</html>
