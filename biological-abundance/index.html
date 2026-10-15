@@ -28,10 +28,10 @@
 
   /* ---------- book mode ---------- */
   .book-mode { height: 100%; display: grid; grid-template-rows: 1fr var(--controls); }
-  #book { position: relative; min-height: 0; overflow: hidden; opacity: 0; transition: opacity .6s ease; }
-  #book.ready { opacity: 1; }
-  #book-canvas { position: absolute; inset: 0; transition: opacity .2s ease; }
-  #book.jumping #book-canvas { opacity: 0; }
+  #book { position: relative; min-height: 0; overflow: hidden; }
+  #book-canvas { position: absolute; inset: 0; opacity: 0; transition: opacity .6s ease; }
+  #book.ready #book-canvas { opacity: 1; }
+  #book.jumping #book-canvas { opacity: 0; transition-duration: .2s; }
   #book canvas {
     display: block; width: 100% !important; height: 100% !important;
     object-fit: contain; touch-action: pan-y;
