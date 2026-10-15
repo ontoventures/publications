@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Onto Paper Archive</title>
+<meta name="description" content="Publications by Onto, a frontier venture firm building a future of abundance from the atomic to the cosmic.">
+<style>
+  :root {
+    --stage: #110e0c;   /* the flipbooks' warm black */
+    --paper: #f4f3ec;
+    --lime: #b8d13f;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    background: var(--stage);
+    color: var(--paper);
+    font: 17px/1.45 "FK Roman Standard", "Times New Roman", Times, serif;
+    -webkit-font-smoothing: antialiased;
+    padding: max(12vh, env(safe-area-inset-top, 0px)) 8vw max(10vh, env(safe-area-inset-bottom, 0px));
+  }
+  main { max-width: 34em; }
+  h1 { font-weight: normal; font-size: 1em; margin: 0 0 3.2em; opacity: .55; }
+  ul { list-style: none; margin: 0 0 3.2em; padding: 0; }
+  li + li { margin-top: .5em; }
+  .group { opacity: .55; margin: 0 0 .9em; }
+  a { color: inherit; text-decoration: none; opacity: .85; transition: opacity .2s; }
+  a:hover { opacity: 1; text-decoration: underline; text-decoration-color: var(--lime); text-underline-offset: .25em; text-decoration-thickness: 1px; }
+  a:focus-visible { outline: 1px solid var(--lime); outline-offset: 3px; }
+  .subject { opacity: .45; margin-left: 1.2em; }
+</style>
+</head>
+<body>
+  <main>
+    <h1>Onto Paper Archive</h1>
+
+    <p class="group">Annual</p>
+    <ul>
+      <li><a href="2026-annual/">Atomic to Cosmic</a><span class="subject">2026</span></li>
+    </ul>
+
+    <p class="group">Zines</p>
+    <ul>
+      <li><a href="atomic-abundance/">Atomic Abundance</a><span class="subject">Actinide</span></li>
+      <li><a href="molecular-abundance/">Molecular Abundance</a><span class="subject">Lavoit</span></li>
+      <li><a href="biological-abundance/">Biological Abundance</a><span class="subject">Anthrogen</span></li>
+      <li><a href="ecosystem-abundance/">Ecosystem Abundance</a><span class="subject">The Electric Plant Company</span></li>
+      <li><a href="planetary-abundance/">Planetary Abundance</a><span class="subject">Ulysses</span></li>
+    </ul>
+  </main>
+</body>
+</html>
