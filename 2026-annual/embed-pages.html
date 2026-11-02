@@ -37,10 +37,7 @@
   button { font: inherit; color: inherit; }
 
   /* ---------- book mode ---------- */
-  .book-mode { height: 100%; display: grid; grid-template-rows: 1fr; }
-  /* Pages only: no caption, arrows or chapter bar, in the book or on phones */
-  .controls, #colbar, #sheet { display: none !important; }
-  .column-mode #column { padding: 0 0 14px; gap: 10px; }
+  .book-mode { height: 100%; display: grid; grid-template-rows: 1fr var(--controls); }
   #book { position: relative; min-height: 0; overflow: hidden; }
   #book-canvas { position: absolute; inset: 0; opacity: 0; transition: opacity .6s ease; }
   #book.ready #book-canvas { opacity: 1; }
@@ -66,7 +63,7 @@
   .controls {
     display: grid; grid-template-columns: 44px minmax(0, 62em) 44px;
     align-items: center; justify-content: center; gap: 14px;
-    padding: 0 12px 8px;
+    padding: 0 64px 8px;
   }
   .arrow {
     appearance: none; background: none; border: 0;
@@ -202,7 +199,7 @@
     const PAGES = Z.pages;                       // book order: "front", "blank", page numbers, "back"
     const SIZES = Z.sizes;
     const LAST_SPREAD = Math.floor(PAGES.length / 2);
-    const MARGIN = 0;                            // % around the book, as passed to the viewer
+    const MARGIN = 3;                            // % around the book, as passed to the viewer
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     const phone = matchMedia('(max-width: 700px) and (orientation: portrait)');
     const canHover = matchMedia('(hover: hover)');
