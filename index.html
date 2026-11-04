@@ -6,6 +6,16 @@
 <title>Onto Paper Archive</title>
 <meta name="description" content="Publications by Onto, a frontier venture firm building a future of abundance from the atomic to the cosmic.">
 <style>
+  @font-face {
+    font-family: "Supreme LL";
+    src: url("../Fonts/SupremeLL-Regular.woff2") format("woff2");
+    font-weight: 400; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: "Supreme LL";
+    src: url("../Fonts/SupremeLL-Italic.woff2") format("woff2");
+    font-weight: 400; font-style: italic; font-display: swap;
+  }
   :root {
     --stage: #110e0c;   /* the flipbooks' warm black */
     --paper: #f4f3ec;
@@ -17,7 +27,7 @@
   body {
     background: var(--stage);
     color: var(--paper);
-    font: 17px/1.45 "FK Roman Standard", "Times New Roman", Times, serif;
+    font: 15px/1.4 "Supreme LL", "Helvetica Neue", Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     padding: max(12vh, env(safe-area-inset-top, 0px)) 8vw max(10vh, env(safe-area-inset-bottom, 0px));
   }
@@ -29,19 +39,24 @@
   a { color: inherit; text-decoration: none; opacity: .85; transition: opacity .2s; }
   a:hover { opacity: 1; text-decoration: underline; text-decoration-color: var(--lime); text-underline-offset: .25em; text-decoration-thickness: 1px; }
   a:focus-visible { outline: 1px solid var(--lime); outline-offset: 3px; }
-  .subject { opacity: .45; margin-left: 1.2em; }
+  .subject { opacity: .45; margin-left: 1.2em; font-style: italic;  }
+  a.logo, a.logo:hover { display: inline-block; margin-bottom: 22px; opacity: .85; color: var(--paper); text-decoration: none; }
+  .logo svg { display: block; width: 42px; height: auto; fill: currentColor; }
 </style>
 </head>
 <body>
   <main>
+    <a class="logo" href="https://www.onto.vc" aria-label="Onto">
+      <svg viewBox="0 0 184.85 80" aria-hidden="true"><path d="M0,80V0h184.85v80H0ZM37.95,45.81h108.95v-11.63H37.95v11.63Z"/></svg>
+    </a>
     <h1>Onto Paper Archive</h1>
 
-    <p class="group">Annual</p>
+    <p class="group">Annual Publications</p>
     <ul>
       <li><a href="2026-annual/">Atomic to Cosmic</a><span class="subject">2026</span></li>
     </ul>
 
-    <p class="group">Zines</p>
+    <p class="group">The Fringes of Reason</p>
     <ul>
       <li><a href="atomic-abundance/">Atomic Abundance</a><span class="subject">Actinide</span></li>
       <li><a href="molecular-abundance/">Molecular Abundance</a><span class="subject">Lavoit</span></li>
